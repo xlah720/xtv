@@ -1,4 +1,2 @@
 # xtv
-# xtv
-# xtv
-# xtv
+This is XLAH first program.
