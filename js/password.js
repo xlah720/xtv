@@ -12,6 +12,59 @@ function isPasswordProtected() {
     return typeof pwd === 'string' && pwd.length === 64 && !/^0+$/.test(pwd);
 }
 
+/**
+ * 检查是否强制要求设置密码
+ * 如果没有设置有效的 PASSWORD，则认为需要强制设置密码
+ * 为了安全考虑，所有部署都必须设置密码
+ */
+function isPasswordRequired() {
+    return !isPasswordProtected();
+}
+
+/**
+ * 强制密码保护检查 - 防止绕过
+ * 在关键操作前都应该调用此函数
+ */
+function ensurePasswordProtection() {
+    if (isPasswordRequired()) {
+        showPasswordModal();
+        throw new Error('Password protection is required');
+    }
+    if (isPasswordProtected() && !isPasswordVerified()) {
+        showPasswordModal();
+        throw new Error('Password verification required');
+    }
+    return true;
+}
+
+window.isPasswordProtected = isPasswordProtected;
+window.isPasswordRequired = isPasswordRequired;
+
+/**
+ * 验证用户输入的密码是否正确（异步，使用SHA-256哈希）
+ */
+async function verifyPassword(password) {
+    try {
+        const correctHash = window.__ENV__?.PASSWORD;
+        if (!correctHash) return false;
+
+        const inputHash = await sha256(password);
+        const isValid = inputHash === correctHash;
+
+        if (isValid) {
+            localStorage.setItem(PASSWORD_CONFIG.localStorageKey, JSON.stringify({
+                verified: true,
+                timestamp: Date.now(),
+                passwordHash: correctHash
+            }));
+        }
+        return isValid;
+    } catch (error) {
+        console.error('验证密码时出错:', error);
+        return false;
+    }
+}
+
 // 验证状态检查
 function isPasswordVerified() {
     try {
